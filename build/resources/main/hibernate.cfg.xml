@@ -13,9 +13,9 @@
         <property name="hibernate.hbm2ddl.auto">create</property><!-- creates schema from entities each app deploy  -->
 
         <!-- here all entities will come -->
-        <mapping class="model.Family"/>
-        <mapping class="model.FamilyMember"/>
-        <mapping class="model.Task"/>
+        <mapping class="application.model.Family"/>
+        <mapping class="application.model.FamilyMember"/>
+        <mapping class="application.model.Task"/>
         <!--<mapping class="core.db.entity.ExternalProject"/>-->
         <!--<mapping class="core.db.entity.InternalProject"/>-->
     </session-factory>

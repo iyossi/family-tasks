@@ -1,5 +1,4 @@
-package model;
-
+package application.model;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -9,17 +8,16 @@ import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
+import java.util.UUID;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-public class FamilyMember {
+public class Task {
     @Id
     @GeneratedValue
     @Column(updatable = false, nullable = false)
-    private int id;
-
+    private UUID id;
     private String name;
-    private int age;
 }

@@ -1,4 +1,4 @@
-package model;
+package application.model;
 
 
 import lombok.AllArgsConstructor;
@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 
 import javax.persistence.*;
 import java.util.List;
+import java.util.UUID;
 
 @Data
 @NoArgsConstructor
@@ -17,7 +18,7 @@ public class Family {
     @Id
     @GeneratedValue
     @Column(updatable = false, nullable = false)
-    private int id;
+    private UUID id;
     private String name;
 
 
@@ -28,8 +29,7 @@ public class Family {
     private List<Task> tasks;
 
 
-    public Family(String name, int id) {
-        this.id = id;
+    public Family(String name) {
         this.name = name;
     }
 }
