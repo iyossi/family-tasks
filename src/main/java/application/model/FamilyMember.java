@@ -1,16 +1,14 @@
 package application.model;
 
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import javax.persistence.*;
 import java.util.UUID;
 
-@Data
+//@Data
 @NoArgsConstructor
-@AllArgsConstructor
+//@AllArgsConstructor
 @Entity
 public class FamilyMember {
     @Id
@@ -18,15 +16,44 @@ public class FamilyMember {
     @Column(updatable = false, nullable = false)
     private UUID id;
 
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public UUID getId() {
+        return id;
+    }
+
+    public int getAge() {
+        return age;
+    }
+
+    public void setAge(int age) {
+        this.age = age;
+    }
+
     private String name;
     private int age;
+
+    public Family getFamily() {
+        return family;
+    }
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "family_id")
     private Family family;
 
+
     public FamilyMember(String name, int age) {
         this.name = name;
         this.age = age;
+    }
+
+    public void setFamily(Family family) {
+        this.family = family;
     }
 }

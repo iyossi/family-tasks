@@ -4,6 +4,7 @@ package application.model;
 import javax.persistence.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 //@Data
@@ -19,12 +20,15 @@ public class Family {
 
     private String name;
 
+    @OneToMany(orphanRemoval = true, cascade = CascadeType.ALL)
+    private List<Task> tasks = new ArrayList<>();
 
     @OneToMany(orphanRemoval = true, cascade = CascadeType.ALL, mappedBy = "family")
     private List<FamilyMember> members;
 
-    @OneToMany(orphanRemoval = true, cascade = CascadeType.ALL)
-    private List<Task> tasks;
+    public UUID getId() {
+        return id;
+    }
 
 
     public Family() {
@@ -57,7 +61,34 @@ public class Family {
         return tasks;
     }
 
-    public void setTasks(List<Task> tasks) {
-        this.tasks = tasks;
+    @Override
+    public String toString() {
+        return "Family{" +
+                "id=" + id +
+                ", name='" + name + '\'' +
+//                ", members=" + members +
+//                ", tasks=" + tasks +
+                '}';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Family family = (Family) o;
+        return Objects.equals(id, family.id) &&
+                Objects.equals(name, family.name);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id, name);
+    }
+
+    public void addTask(Task task) {
+//        if (tasks==null) {
+//            tasks=new ArrayList<Task>();
+//        }
+        tasks.add(task);
     }
 }

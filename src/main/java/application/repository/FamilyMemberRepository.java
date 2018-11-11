@@ -8,5 +8,6 @@ import java.util.UUID;
 
 @Repository
 public interface FamilyMemberRepository extends JpaRepository<FamilyMember, UUID> {
+
 }
 

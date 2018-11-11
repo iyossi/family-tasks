@@ -35,8 +35,9 @@ public class FamilyTasksApplication implements CommandLineRunner {
     public void run(String... args) {
         log.debug("----------------------Starting 2 ");
         membersManager.initialSetup();
-
         log.debug("----------------------Starting 3");
+        membersManager.getAllMembers().forEach(member -> membersManager.memberActivity(member));
+        log.debug("----------------------Starting 4");
 
     }
 }
