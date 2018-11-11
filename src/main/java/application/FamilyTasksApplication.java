@@ -7,10 +7,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.scheduling.annotation.EnableAsync;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
 
 
 @SpringBootApplication
+@EnableTransactionManagement
+@EnableJpaRepositories
+@EnableAsync
 public class FamilyTasksApplication implements CommandLineRunner {
 
     //	 private static final java.util.logging.Logger log = java.util.logging.Logger.getLogger(LogExample.class.getName());
@@ -26,20 +31,12 @@ public class FamilyTasksApplication implements CommandLineRunner {
 
     }
 
-
-
-
     @Override
-    public void run(String... args) throws Exception {
+    public void run(String... args) {
         log.debug("----------------------Starting 2 ");
-        membersManager.doIt();
+        membersManager.initialSetup();
 
         log.debug("----------------------Starting 3");
-        try {
-            Thread.sleep(1000000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
 
     }
 }
