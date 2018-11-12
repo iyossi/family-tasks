@@ -10,6 +10,7 @@ import org.hibernate.ObjectNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,7 +23,7 @@ import java.util.UUID;
 @Service
 @Transactional
 public class MembersManager {
-    private static final int MAX_MEMBERS_PER_FAMILY = 1;
+    private static final int MAX_MEMBERS_PER_FAMILY = 5;
     private Logger log = LoggerFactory.getLogger(MembersManager.class);
 
     @Autowired
@@ -73,14 +74,16 @@ public class MembersManager {
         return familyMemberRepository.findAll();
     }
 
-    //    @Async
+    @Async
     public void memberActivity(FamilyMember familyMember) {
         log.info("Starting memberActivity for " + familyMember);
 
         try {
             createTask(familyMember);
+//            createTask(familyMember);
             updateRandomTask(familyMember);
             deleteRandomTask(familyMember);
+//            createTask(familyMember);
         } catch (Throwable e) {
             log.error(e.toString());
             e.printStackTrace();

@@ -4,6 +4,7 @@ package application.bl;
 import application.model.Family;
 import application.model.Task;
 import application.repository.FamilyRepository;
+import application.repository.TaskRepository;
 import org.hibernate.ObjectNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,15 +25,19 @@ public class FamilyManager {
     @Autowired
     private FamilyRepository familyRepository;
 
+    @Autowired
+    private TaskRepository taskRepository;
+
 
     protected void addTask(UUID familyId, Task task) throws ObjectNotFoundException {
         if (task == null) {
-            throw new NullPointerException("Nuul Task");
+            throw new NullPointerException("Null Task");
         }
         Optional<Family> familyOpt = familyRepository.findById(familyId);
         familyOpt.orElseThrow(() -> new ObjectNotFoundException(familyId, "Family"));
         Family family = familyOpt.get();
-        family.addTask(task);
+        task.setFamily(family);
+        family.getTasks().add(task);
         familyRepository.save(family);
         log.info("Task " + task.getName() + " was added to family " + family.getName());
     }
@@ -48,11 +53,13 @@ public class FamilyManager {
         Optional<Family> familyOpt = familyRepository.findById(familyId);
         familyOpt.orElseThrow(() -> new ObjectNotFoundException(familyId, "Family"));
         Family family = familyOpt.get();
-        family.getTasks().remove(taskIndex);
+        Task task = family.getTasks().remove(taskIndex);
+        UUID taskId = task.getId();
         if (family.getTasks().isEmpty()) {
 //       TODO     family.setTasks(null);
         }
         familyRepository.save(family);
+
         // TODO
         // to be implemented
     }

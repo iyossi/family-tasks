@@ -9,7 +9,7 @@ import java.util.UUID;
 //@Data
 @NoArgsConstructor
 //@AllArgsConstructor
-@Entity
+@Entity(name = "FamilyMember")
 public class FamilyMember {
     @Id
     @GeneratedValue

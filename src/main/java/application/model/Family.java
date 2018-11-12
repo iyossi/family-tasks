@@ -20,7 +20,7 @@ public class Family {
 
     private String name;
 
-    @OneToMany(orphanRemoval = true, cascade = CascadeType.ALL)
+    @OneToMany(orphanRemoval = true, cascade = CascadeType.ALL, mappedBy = "family")
     private List<Task> tasks = new ArrayList<>();
 
     @OneToMany(orphanRemoval = true, cascade = CascadeType.ALL, mappedBy = "family")
@@ -29,7 +29,6 @@ public class Family {
     public UUID getId() {
         return id;
     }
-
 
     public Family() {
         members = new ArrayList<>();
@@ -53,9 +52,9 @@ public class Family {
         return members;
     }
 
-    public void setMembers(List<FamilyMember> members) {
-        this.members = members;
-    }
+    // public void setMembers(List<FamilyMember> members) {
+//        this.members = members;
+//    }
 
     public List<Task> getTasks() {
         return tasks;
@@ -85,10 +84,10 @@ public class Family {
         return Objects.hash(id, name);
     }
 
-    public void addTask(Task task) {
-//        if (tasks==null) {
-//            tasks=new ArrayList<Task>();
-//        }
-        tasks.add(task);
-    }
+//    public void addTask(Task task) {
+////        if (tasks==null) {
+////            tasks=new ArrayList<Task>();
+////        }
+//        tasks.add(task);
+//    }
 }
