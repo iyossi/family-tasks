@@ -14,7 +14,7 @@ public class ActivityLog {
     @Column(updatable = false, nullable = false)
     private UUID id;
 
-    private ActivityType activityType;
+    private eActivityType activityType;
 
 //    private
 }

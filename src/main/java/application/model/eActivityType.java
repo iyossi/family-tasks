@@ -1,5 +1,5 @@
 package application.model;
 
-public enum ActivityType {
+public enum eActivityType {
     INSERT, UPDATE, DELETE
 }

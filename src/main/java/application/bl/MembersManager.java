@@ -2,6 +2,7 @@ package application.bl;
 
 
 import application.Exceptions.ClosedTasksListException;
+import application.Exceptions.NoTasksToChooseFrom;
 import application.model.Family;
 import application.model.FamilyMember;
 import application.model.Task;
@@ -25,6 +26,7 @@ import java.util.UUID;
 @Transactional
 public class MembersManager {
     private static final int MAX_MEMBERS_PER_FAMILY = 2;
+    private static final int MAX_ITERATIONS = 10;
     private Logger log = LoggerFactory.getLogger(MembersManager.class);
 
     @Autowired
@@ -78,30 +80,48 @@ public class MembersManager {
     @Async
     public void memberActivity(FamilyMember familyMember) {
         log.info("Starting memberActivity for " + familyMember);
-
-        try {
-            createTask(familyMember);
-            createTask(familyMember);
-            updateRandomTask(familyMember);
-            deleteRandomTask(familyMember);
-            deleteRandomTask(familyMember);
-            createTask(familyMember);
-        } catch (Throwable e) {
-            log.error(e.toString());
-            e.printStackTrace();
+        for (int counter = 0; counter <= MAX_ITERATIONS; counter++) {
+            try {
+                Random rand = new Random();
+                int pickedNumber = rand.nextInt(eOperation.values().length);
+                switch (pickedNumber) {
+                    case 0:
+                    case 1:
+                        createTask(familyMember);
+                        break;
+                    case 2:
+                        updateRandomTask(familyMember);
+                        break;
+                    case 3:
+                        deleteRandomTask(familyMember);
+                        break;
+                    default:
+                        log.error("Invalid operation=" + pickedNumber);
+                        break;
+                }
+            } catch (NoTasksToChooseFrom e) {
+                log.info("we tried to update or delete, but the list is empty");
+            } catch (Throwable e) {
+                log.error(e.toString());
+                e.printStackTrace();
+            }
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
-
         Thread.currentThread().interrupt();
 
     }
 
 
-    private int getRandomTaskIndex(FamilyMember familyMember) {
+    private int getRandomTaskIndex(FamilyMember familyMember) throws NoTasksToChooseFrom {
         UUID familyId = familyMember.getFamily().getId();
         List<Task> tasks = familyManager.getTasks(familyId);
-        if (tasks == null) {
-            log.debug("No tasks to delete");
-            return -1;
+        if (tasks == null || tasks.isEmpty()) {
+            log.debug("No tasks to choose from");
+            throw new NoTasksToChooseFrom();
         }
         int listSize = tasks.size();
 
@@ -130,7 +150,7 @@ public class MembersManager {
 
 
     @Transactional
-    private void updateRandomTask(FamilyMember familyMember) {
+    private void updateRandomTask(FamilyMember familyMember) throws NoTasksToChooseFrom {
         Family family = familyRepository.getOne(familyMember.getFamily().getId());
         log.info(family.toString());
         UUID familyId = family.getId();
@@ -142,7 +162,7 @@ public class MembersManager {
     }
 
     @Transactional
-    private void deleteRandomTask(FamilyMember familyMember) {
+    private void deleteRandomTask(FamilyMember familyMember) throws NoTasksToChooseFrom {
         UUID familyId = familyMember.getFamily().getId();
         int pickedNumber = getRandomTaskIndex(familyMember);
         familyManager.removeTask(familyId, pickedNumber);
