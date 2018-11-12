@@ -1,6 +1,7 @@
 package application.bl;
 
 
+import application.Exceptions.ClosedTasksListException;
 import application.model.Family;
 import application.model.FamilyMember;
 import application.model.Task;
@@ -23,7 +24,7 @@ import java.util.UUID;
 @Service
 @Transactional
 public class MembersManager {
-    private static final int MAX_MEMBERS_PER_FAMILY = 5;
+    private static final int MAX_MEMBERS_PER_FAMILY = 2;
     private Logger log = LoggerFactory.getLogger(MembersManager.class);
 
     @Autowired
@@ -80,10 +81,11 @@ public class MembersManager {
 
         try {
             createTask(familyMember);
-//            createTask(familyMember);
+            createTask(familyMember);
             updateRandomTask(familyMember);
             deleteRandomTask(familyMember);
-//            createTask(familyMember);
+            deleteRandomTask(familyMember);
+            createTask(familyMember);
         } catch (Throwable e) {
             log.error(e.toString());
             e.printStackTrace();
@@ -114,12 +116,15 @@ public class MembersManager {
     @Transactional
     private void createTask(FamilyMember familyMember) {
         Task task = new Task("Task created by " + familyMember.getName() + " on " + (System.currentTimeMillis()));
+        UUID familyId = familyMember.getFamily().getId();
+
         try {
-            UUID familyId = familyMember.getFamily().getId();
             familyManager.addTask(familyId, task);
         } catch (ObjectNotFoundException e) {
             e.printStackTrace();
             log.error(e.toString());
+        } catch (ClosedTasksListException e) {
+            log.info("can't add task '" + task.getName() + "' to " + familyId);
         }
     }
 

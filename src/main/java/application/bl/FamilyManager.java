@@ -1,6 +1,7 @@
 package application.bl;
 
 
+import application.Exceptions.ClosedTasksListException;
 import application.model.Family;
 import application.model.Task;
 import application.repository.FamilyRepository;
@@ -29,7 +30,7 @@ public class FamilyManager {
     private TaskRepository taskRepository;
 
 
-    protected void addTask(UUID familyId, Task task) throws ObjectNotFoundException {
+    protected void addTask(UUID familyId, Task task) throws ObjectNotFoundException, ClosedTasksListException {
         if (task == null) {
             throw new NullPointerException("Null Task");
         }
@@ -37,7 +38,7 @@ public class FamilyManager {
         familyOpt.orElseThrow(() -> new ObjectNotFoundException(familyId, "Family"));
         Family family = familyOpt.get();
         task.setFamily(family);
-        family.getTasks().add(task);
+        family.addTask(task);
         familyRepository.save(family);
         log.info("Task " + task.getName() + " was added to family " + family.getName());
     }
@@ -53,26 +54,15 @@ public class FamilyManager {
         Optional<Family> familyOpt = familyRepository.findById(familyId);
         familyOpt.orElseThrow(() -> new ObjectNotFoundException(familyId, "Family"));
         Family family = familyOpt.get();
-        Task task = family.getTasks().remove(taskIndex);
-        UUID taskId = task.getId();
-        if (family.getTasks().isEmpty()) {
-//       TODO     family.setTasks(null);
-        }
+        family.removeTask(taskIndex);
         familyRepository.save(family);
-
-        // TODO
-        // to be implemented
     }
 
     protected void updateTask(UUID familyId, int taskIndex, Task task) {
         Optional<Family> familyOpt = familyRepository.findById(familyId);
         familyOpt.orElseThrow(() -> new ObjectNotFoundException(familyId, "Family"));
         Family family = familyOpt.get();
-        List<Task> tasks = family.getTasks();
-        if (tasks == null || taskIndex >= tasks.size()) {
-            throw new ObjectNotFoundException(taskIndex, "Task");
-        }
-        tasks.set(taskIndex, task);
+        family.updateTask(taskIndex, task);
         familyRepository.save(family);
     }
 }

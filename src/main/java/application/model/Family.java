@@ -1,17 +1,21 @@
 package application.model;
 
 
+import application.Exceptions.ClosedTasksListException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javax.persistence.*;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
 
 //@Data
 //@NoArgsConstructor
 //@AllArgsConstructor
 @Entity(name = "family")
 public class Family {
+
+    @Transient
+    private Logger log = LoggerFactory.getLogger(Family.class);
 
     @Id
     @GeneratedValue
@@ -20,11 +24,14 @@ public class Family {
 
     private String name;
 
-    @OneToMany(orphanRemoval = true, cascade = CascadeType.ALL, mappedBy = "family")
-    private List<Task> tasks = new ArrayList<>();
 
     @OneToMany(orphanRemoval = true, cascade = CascadeType.ALL, mappedBy = "family")
     private List<FamilyMember> members;
+
+    @OneToMany(orphanRemoval = true, cascade = CascadeType.ALL, mappedBy = "family")
+    private List<Task> tasks = new ArrayList<>();
+
+    private boolean blockTaskAddition = false;
 
     public UUID getId() {
         return id;
@@ -52,12 +59,30 @@ public class Family {
         return members;
     }
 
-    // public void setMembers(List<FamilyMember> members) {
-//        this.members = members;
-//    }
 
     public List<Task> getTasks() {
-        return tasks;
+        return Collections.unmodifiableList(tasks); //  so only Family can modify the list
+    }
+
+    public void addTask(Task task) throws ClosedTasksListException {
+        if (!blockTaskAddition) {
+            tasks.add(task);
+        } else {
+            log.info("Tasks are blocked for addtion");
+            throw new ClosedTasksListException();
+        }
+    }
+
+    public Task removeTask(int index) {
+        Task task = tasks.remove(index);
+        if (tasks.isEmpty()) {
+            blockTaskAddition = true;
+        }
+        return task;
+    }
+
+    public void updateTask(int taskIndex, Task task) {
+        tasks.set(taskIndex, task);
     }
 
     @Override
