@@ -1,5 +1,6 @@
 package application;
 
+import application.bl.FamilyManager;
 import application.bl.MembersManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,6 +26,9 @@ public class FamilyTasksApplication implements CommandLineRunner {
     @Autowired
     private MembersManager membersManager;
 
+    @Autowired
+    private FamilyManager familyManager;
+
     public static void main(String[] args) {
 
         SpringApplication.run(FamilyTasksApplication.class, args);
@@ -36,8 +40,17 @@ public class FamilyTasksApplication implements CommandLineRunner {
         log.debug("----------------------Starting 2 ");
         membersManager.initialSetup();
         log.debug("----------------------Starting 3");
-        membersManager.getAllMembers().forEach(member -> membersManager.memberActivity(member));
+        membersManager.getAllMembers().forEach(member -> {
+            log.info("Starting activity for member " + member.getName());
+            membersManager.memberActivity(member.getId());
+        });
         log.debug("----------------------Starting 4");
 
+        try {
+            Thread.sleep(200 * 1000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        familyManager.printStats();
     }
 }

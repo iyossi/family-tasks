@@ -30,6 +30,17 @@ public class FamilyManager {
     private TaskRepository taskRepository;
 
 
+    public List<Family> getAllFamilies() {
+        return familyRepository.findAll();
+    }
+
+
+    public void printStats() {
+        getAllFamilies().forEach(family -> {
+            log.info("STAT family " + family.getName() + " has " + family.getTasks().size() + " tasks");
+        });
+    }
+
     protected void addTask(UUID familyId, Task task) throws ObjectNotFoundException, ClosedTasksListException {
         if (task == null) {
             throw new NullPointerException("Null Task");
@@ -40,7 +51,7 @@ public class FamilyManager {
         task.setFamily(family);
         family.addTask(task);
         familyRepository.save(family);
-        log.info("Task " + task.getName() + " was added to family " + family.getName());
+//        log.info(task.getName() + " was added to family " + family.getName());
     }
 
     protected List<Task> getTasks(UUID familyId) {
@@ -50,12 +61,18 @@ public class FamilyManager {
         return family.getTasks();
     }
 
-    protected void removeTask(UUID familyId, int taskIndex) {
+    protected int getTasksCount(UUID familyId) {
+        int tasksCount = familyRepository.findAllChildrenCount(familyId);
+        return tasksCount;
+    }
+
+    protected Task removeTask(UUID familyId, int taskIndex) {
         Optional<Family> familyOpt = familyRepository.findById(familyId);
         familyOpt.orElseThrow(() -> new ObjectNotFoundException(familyId, "Family"));
         Family family = familyOpt.get();
-        family.removeTask(taskIndex);
+        Task task = family.removeTask(taskIndex);
         familyRepository.save(family);
+        return task;
     }
 
     protected void updateTask(UUID familyId, int taskIndex, Task task) {

@@ -16,6 +16,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.persistence.EntityNotFoundException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -25,8 +26,9 @@ import java.util.UUID;
 @Service
 @Transactional
 public class MembersManager {
-    private static final int MAX_MEMBERS_PER_FAMILY = 2;
-    private static final int MAX_ITERATIONS = 10;
+    private static final int MAX_MEMBERS_PER_FAMILY = 200;
+    private static final int MAX_ITERATIONS = 5;
+    private static final long SLEEP_TIME_BETWEEN_ACTIVITIES_MS = 50;//ms
     private Logger log = LoggerFactory.getLogger(MembersManager.class);
 
     @Autowired
@@ -40,22 +42,22 @@ public class MembersManager {
 
     public void initialSetup() {
         log.info("-- YOSSI initialSetup --");
-        persist();
-        load();
+        setupFamiliesAndMembers();
+//        load();
     }
 
-    private void load() {
-//        System.out.println("-- loading persons --");
-        log.info("Loading");
+//    private void load() {
+////        System.out.println("-- loading persons --");
+//        log.info("Loading");
+//
+//        Iterable<Family> familiesItr = familyRepository.findAll();
+//        for (Family family : familiesItr) {
+//            log.info(family.toString());
+//        }
+//
+//    }
 
-        Iterable<Family> familiesItr = familyRepository.findAll();
-        for (Family family : familiesItr) {
-            log.info(family.toString());
-        }
-
-    }
-
-    private void persist() {
+    private void setupFamiliesAndMembers() {
         List<Family> families = new ArrayList<>();
         families.add(new Family("Cohen"));
         families.add(new Family("Levi"));
@@ -68,9 +70,10 @@ public class MembersManager {
                 family.getMembers().add(member);
             }
         });
-        log.info("-- persisting persons --");
-        log.debug(families.toString());
+        log.info("Families and members were added");
         familyRepository.saveAll(families);
+        log.debug(families.toString());
+
     }
 
     public List<FamilyMember> getAllMembers() {
@@ -78,94 +81,101 @@ public class MembersManager {
     }
 
     @Async
-    public void memberActivity(FamilyMember familyMember) {
-        log.info("Starting memberActivity for " + familyMember);
-        for (int counter = 0; counter <= MAX_ITERATIONS; counter++) {
+    public void memberActivity(UUID memberId) {
+        log.info("Starting memberActivity for " + memberId);
+        for (int counter = 0; counter < MAX_ITERATIONS; counter++) {
             try {
-                Random rand = new Random();
-                int pickedNumber = rand.nextInt(eOperation.values().length);
-                switch (pickedNumber) {
-                    case 0:
-                    case 1:
-                        createTask(familyMember);
-                        break;
-                    case 2:
-                        updateRandomTask(familyMember);
-                        break;
-                    case 3:
-                        deleteRandomTask(familyMember);
-                        break;
-                    default:
-                        log.error("Invalid operation=" + pickedNumber);
-                        break;
-                }
+                runOneOperation(memberId);
             } catch (NoTasksToChooseFrom e) {
                 log.info("we tried to update or delete, but the list is empty");
+            } catch (EntityNotFoundException e) {
+                log.error("Invalid member Id " + memberId);
+                break; // no point to continue
             } catch (Throwable e) {
                 log.error(e.toString());
                 e.printStackTrace();
             }
             try {
-                Thread.sleep(1000);
+                Thread.sleep(SLEEP_TIME_BETWEEN_ACTIVITIES_MS);
             } catch (InterruptedException e) {
                 e.printStackTrace();
+                break;
             }
         }
         Thread.currentThread().interrupt();
 
     }
 
+    private void runOneOperation(UUID memberId) throws NoTasksToChooseFrom {
+        Random rand = new Random();
+        int pickedNumber = rand.nextInt(eOperation.values().length);
+        FamilyMember familyMember = familyMemberRepository.getOne(memberId);
+        switch (pickedNumber) {
+            case 0:
+            case 1:
+                createTask(familyMember);
+                break;
+            case 2:
+                updateRandomTask(familyMember);
+                break;
+            case 3:
+                deleteRandomTask(familyMember);
+                break;
+            default:
+                log.error("Invalid operation=" + pickedNumber);
+                break;
+        }
+    }
+
 
     private int getRandomTaskIndex(FamilyMember familyMember) throws NoTasksToChooseFrom {
         UUID familyId = familyMember.getFamily().getId();
-        List<Task> tasks = familyManager.getTasks(familyId);
-        if (tasks == null || tasks.isEmpty()) {
-            log.debug("No tasks to choose from");
-            throw new NoTasksToChooseFrom();
-        }
-        int listSize = tasks.size();
+        int listSize = familyManager.getTasksCount(familyId);
+        log.info(" list size is " + listSize);
 
         Random rand = new Random();
         int pickedNumber = rand.nextInt(listSize);
-        log.info("pickedNumber=" + pickedNumber);
-        UUID taskId = tasks.get(pickedNumber).getId();
-        log.info("getRandomTask task id " + taskId.toString() + " in index " + pickedNumber + " from list size " + listSize);
+//        log.info("pickedNumber=" + pickedNumber);
+//        UUID taskId = tasks.get(pickedNumber).getId();
+//        log.debug("getRandomTask returns " + pickedNumber + " from list size " + listSize);
         return pickedNumber;
     }
 
-    @Transactional
     private void createTask(FamilyMember familyMember) {
-        Task task = new Task("Task created by " + familyMember.getName() + " on " + (System.currentTimeMillis()));
-        UUID familyId = familyMember.getFamily().getId();
+        Task task = new Task("Task " + familyMember.getName() + "_" + (System.currentTimeMillis()));
+        Family family = familyMember.getFamily();
+        UUID familyId = family.getId();
 
         try {
             familyManager.addTask(familyId, task);
+            log.info("ADDED " + task.getName());
         } catch (ObjectNotFoundException e) {
             e.printStackTrace();
             log.error(e.toString());
         } catch (ClosedTasksListException e) {
-            log.info("can't add task '" + task.getName() + "' to " + familyId);
+            log.info("REJECTED " + task.getName());
         }
     }
 
 
-    @Transactional
     private void updateRandomTask(FamilyMember familyMember) throws NoTasksToChooseFrom {
         Family family = familyRepository.getOne(familyMember.getFamily().getId());
-        log.info(family.toString());
+
         UUID familyId = family.getId();
         int pickedNumber = getRandomTaskIndex(familyMember);
-        List<Task> tasks = family.getTasks();
+        List<Task> tasks = family.getTasks(); // TODO: get parent with children in one fetch
         Task task = tasks.get(pickedNumber);
         task.setName(task.getName() + "_updated");
         familyManager.updateTask(familyId, pickedNumber, task);
+        log.info("UPDATED " + task.getName());
     }
 
-    @Transactional
     private void deleteRandomTask(FamilyMember familyMember) throws NoTasksToChooseFrom {
         UUID familyId = familyMember.getFamily().getId();
         int pickedNumber = getRandomTaskIndex(familyMember);
-        familyManager.removeTask(familyId, pickedNumber);
+        Task task = familyManager.removeTask(familyId, pickedNumber);
+        log.info("DELETED " + task.getName());
+
 
     }
 
