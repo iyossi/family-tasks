@@ -44,7 +44,7 @@ public class FamilyMember {
     }
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "family_id")
+    @JoinColumn(name = "family_id", nullable = false)
     private Family family;
 
 

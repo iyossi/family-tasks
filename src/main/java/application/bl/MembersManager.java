@@ -159,15 +159,21 @@ public class MembersManager {
 
 
     private void updateRandomTask(FamilyMember familyMember) throws NoTasksToChooseFrom {
-        Family family = familyRepository.getOne(familyMember.getFamily().getId());
-
+        Family family = familyRepository.findOneWithTasksById(familyMember.getFamily().getId());
         UUID familyId = family.getId();
-        int pickedNumber = getRandomTaskIndex(familyMember);
-        List<Task> tasks = family.getTasks(); // TODO: get parent with children in one fetch
-        Task task = tasks.get(pickedNumber);
-        task.setName(task.getName() + "_updated");
-        familyManager.updateTask(familyId, pickedNumber, task);
-        log.info("UPDATED " + task.getName());
+        try {
+            int pickedNumber = getRandomTaskIndex(familyMember);
+            List<Task> tasks = family.getTasks();
+
+            Task task = tasks.get(pickedNumber);
+            task.setName(task.getName() + "_updated");
+            familyManager.updateTask(familyId, pickedNumber, task);
+            log.info("UPDATED " + task.getName());
+        } catch (IndexOutOfBoundsException e) {
+            // the list was modified in the middle
+        } catch (IllegalArgumentException e) {
+            // possibly the list was empty (update by another thread at the same time ?)
+        }
     }
 
     private void deleteRandomTask(FamilyMember familyMember) throws NoTasksToChooseFrom {

@@ -13,5 +13,10 @@ public interface FamilyRepository extends JpaRepository<Family, UUID> {
 
     @Query("select size(u.tasks) from family u where u.id=:familyId")
     int findAllChildrenCount(@Param("familyId") UUID familyId);
+
+
+    // @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select family from family family left join fetch family.tasks where family.id =:id")
+    Family findOneWithTasksById(@Param("id") UUID id);
 }
 
