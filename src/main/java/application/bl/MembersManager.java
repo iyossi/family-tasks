@@ -28,9 +28,9 @@ import java.util.UUID;
 @Transactional
 public class MembersManager {
     //TODO move to prepreties file
-    private static final int MAX_MEMBERS_PER_FAMILY = 200;
-    private static final int MAX_ITERATIONS = 50;// for now. it should be infinite according to the requirements ?
-    private static final long SLEEP_TIME_BETWEEN_ACTIVITIES_MS = 50;//ms
+    private static final int MAX_MEMBERS_PER_FAMILY = 20;
+    private static final int MAX_ITERATIONS = 20;// for now. it should be infinite according to the requirements ?
+    private static final long SLEEP_TIME_BETWEEN_ACTIVITIES_MS = 500;//ms
 
     private Logger log = LoggerFactory.getLogger(MembersManager.class);
 
