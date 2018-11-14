@@ -12,23 +12,21 @@ public class Task {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "family_id", nullable = false)
     private Family family;
-
-    public Family getFamily() {
-        return family;
-    }
-
     @Id
     @GeneratedValue
     @Column(updatable = false, nullable = false)
     private UUID id;
     private String name;
+    public Task(String name) {
+        this.name = name;
+    }
+
+    public Family getFamily() {
+        return family;
+    }
 
     public void setFamily(Family family) {
         this.family = family;
-    }
-
-    public Task(String name) {
-        this.name = name;
     }
 
     public UUID getId() {

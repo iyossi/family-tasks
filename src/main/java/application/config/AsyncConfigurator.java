@@ -14,9 +14,10 @@ public class AsyncConfigurator implements AsyncConfigurer {
     @Override
     public Executor getAsyncExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        //TODO move to properties file
         executor.setCorePoolSize(4);
         executor.setMaxPoolSize(4);
-        executor.setThreadNamePrefix("sgfgd");
+        executor.setThreadNamePrefix("familyMember-thread");
         executor.initialize();
 
         return executor;

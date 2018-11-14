@@ -19,9 +19,8 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 @EnableAsync
 public class FamilyTasksApplication implements CommandLineRunner {
 
-    //	 private static final java.util.logging.Logger log = java.util.logging.Logger.getLogger(LogExample.class.getName());
-//    private static final org.apache.logging.log4j.Logger log = org.apache.logging.log4j.LogManager.getLogger(FamilyTasksApplication.class);
-//    private static final java.util.logging.Logger log = java.util.logging.Logger.getLogger(FamilyTasksApplication.class.getName());
+    public static final int STATS_TIMEOUT_SECONDS = 200; //TODO move to prepreties files
+
     private Logger log = LoggerFactory.getLogger(FamilyTasksApplication.class);
     @Autowired
     private MembersManager membersManager;
@@ -30,24 +29,19 @@ public class FamilyTasksApplication implements CommandLineRunner {
     private FamilyManager familyManager;
 
     public static void main(String[] args) {
-
         SpringApplication.run(FamilyTasksApplication.class, args);
-
     }
 
     @Override
     public void run(String... args) {
-        log.debug("----------------------Starting 2 ");
         membersManager.initialSetup();
-        log.debug("----------------------Starting 3");
         membersManager.getAllMembers().forEach(member -> {
-            log.info("Starting activity for member " + member.getName());
             membersManager.memberActivity(member.getId());
         });
-        log.debug("----------------------Starting 4");
 
+        //print stats after some time
         try {
-            Thread.sleep(200 * 1000);
+            Thread.sleep(STATS_TIMEOUT_SECONDS * 1000);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }

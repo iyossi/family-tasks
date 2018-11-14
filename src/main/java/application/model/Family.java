@@ -33,10 +33,6 @@ public class Family {
 
     private boolean blockTaskAddition = false;
 
-    public UUID getId() {
-        return id;
-    }
-
     public Family() {
         members = new ArrayList<>();
 
@@ -45,6 +41,10 @@ public class Family {
     public Family(String name) {
         this.name = name;
         members = new ArrayList<>();
+    }
+
+    public UUID getId() {
+        return id;
     }
 
     public String getName() {

@@ -36,6 +36,7 @@ public class FamilyManager {
 
 
     public void printStats() {
+        //TODO implement upon requirements. currently just a simple stat
         getAllFamilies().forEach(family -> {
             log.info("STAT family " + family.getName() + " has " + family.getTasks().size() + " tasks");
         });

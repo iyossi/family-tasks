@@ -12,6 +12,7 @@ import org.hibernate.ObjectNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,9 +27,11 @@ import java.util.UUID;
 @Service
 @Transactional
 public class MembersManager {
+    //TODO move to prepreties file
     private static final int MAX_MEMBERS_PER_FAMILY = 200;
-    private static final int MAX_ITERATIONS = 5;
+    private static final int MAX_ITERATIONS = 50;// for now. it should be infinite according to the requirements ?
     private static final long SLEEP_TIME_BETWEEN_ACTIVITIES_MS = 50;//ms
+
     private Logger log = LoggerFactory.getLogger(MembersManager.class);
 
     @Autowired
@@ -41,21 +44,8 @@ public class MembersManager {
     private FamilyManager familyManager;
 
     public void initialSetup() {
-        log.info("-- YOSSI initialSetup --");
         setupFamiliesAndMembers();
-//        load();
     }
-
-//    private void load() {
-////        System.out.println("-- loading persons --");
-//        log.info("Loading");
-//
-//        Iterable<Family> familiesItr = familyRepository.findAll();
-//        for (Family family : familiesItr) {
-//            log.info(family.toString());
-//        }
-//
-//    }
 
     private void setupFamiliesAndMembers() {
         List<Family> families = new ArrayList<>();
@@ -72,8 +62,6 @@ public class MembersManager {
         });
         log.info("Families and members were added");
         familyRepository.saveAll(families);
-        log.debug(families.toString());
-
     }
 
     public List<FamilyMember> getAllMembers() {
@@ -110,6 +98,7 @@ public class MembersManager {
         Random rand = new Random();
         int pickedNumber = rand.nextInt(eOperation.values().length);
         FamilyMember familyMember = familyMemberRepository.getOne(memberId);
+        Thread.currentThread().setName(familyMember.getName() + "_thread"); // for better logging
         switch (pickedNumber) {
             case 0:
             case 1:
@@ -131,13 +120,10 @@ public class MembersManager {
     private int getRandomTaskIndex(FamilyMember familyMember) throws NoTasksToChooseFrom {
         UUID familyId = familyMember.getFamily().getId();
         int listSize = familyManager.getTasksCount(familyId);
-        log.info(" list size is " + listSize);
+        log.debug(" list size is " + listSize);
 
         Random rand = new Random();
         int pickedNumber = rand.nextInt(listSize);
-//        log.info("pickedNumber=" + pickedNumber);
-//        UUID taskId = tasks.get(pickedNumber).getId();
-//        log.debug("getRandomTask returns " + pickedNumber + " from list size " + listSize);
         return pickedNumber;
     }
 
@@ -159,30 +145,41 @@ public class MembersManager {
 
 
     private void updateRandomTask(FamilyMember familyMember) throws NoTasksToChooseFrom {
+        //TODO use lock (SELECT FOR UPDATE ?)
         Family family = familyRepository.findOneWithTasksById(familyMember.getFamily().getId());
         UUID familyId = family.getId();
+        Task task = null;
+        int pickedNumber = -1;
         try {
-            int pickedNumber = getRandomTaskIndex(familyMember);
+            pickedNumber = getRandomTaskIndex(familyMember);
             List<Task> tasks = family.getTasks();
 
-            Task task = tasks.get(pickedNumber);
+            task = tasks.get(pickedNumber);
             task.setName(task.getName() + "_updated");
             familyManager.updateTask(familyId, pickedNumber, task);
             log.info("UPDATED " + task.getName());
         } catch (IndexOutOfBoundsException e) {
             // the list was modified in the middle
+            log.warn("CONFLICT updating task with index " + pickedNumber);
         } catch (IllegalArgumentException e) {
-            // possibly the list was empty (update by another thread at the same time ?)
+            //  the list was empty (or there are no tasks, or updated by another thread at the same time ?)
+            // TODO better analyze the reason
+            log.debug("Possible conflict trying to update task with index=" + pickedNumber);
+        } catch (PessimisticLockingFailureException e) {
+            log.error("UPDATE failure updating task " + task.getName() + ", possibly: locking timeout");
         }
     }
 
     private void deleteRandomTask(FamilyMember familyMember) throws NoTasksToChooseFrom {
+        //TODO use lock (SELECT FOR UPDATE ?)
         UUID familyId = familyMember.getFamily().getId();
-        int pickedNumber = getRandomTaskIndex(familyMember);
-        Task task = familyManager.removeTask(familyId, pickedNumber);
-        log.info("DELETED " + task.getName());
-
-
+        int pickedNumber = -1;
+        try {
+            pickedNumber = getRandomTaskIndex(familyMember);
+            Task task = familyManager.removeTask(familyId, pickedNumber);
+            log.info("DELETED " + task.getName());
+        } catch (PessimisticLockingFailureException e) {
+            log.error("UPDATE failure deleting  task index " + pickedNumber + ", possibly: locking timeout");
+        }
     }
-
 }

@@ -15,6 +15,16 @@ public class FamilyMember {
     @GeneratedValue
     @Column(updatable = false, nullable = false)
     private UUID id;
+    private String name;
+    private int age;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "family_id", nullable = false)
+    private Family family;
+
+    public FamilyMember(String name, int age) {
+        this.name = name;
+        this.age = age;
+    }
 
     public String getName() {
         return name;
@@ -36,21 +46,8 @@ public class FamilyMember {
         this.age = age;
     }
 
-    private String name;
-    private int age;
-
     public Family getFamily() {
         return family;
-    }
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "family_id", nullable = false)
-    private Family family;
-
-
-    public FamilyMember(String name, int age) {
-        this.name = name;
-        this.age = age;
     }
 
     public void setFamily(Family family) {
