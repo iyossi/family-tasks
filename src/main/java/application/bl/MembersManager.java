@@ -146,11 +146,12 @@ public class MembersManager {
 
     private void updateRandomTask(FamilyMember familyMember) throws NoTasksToChooseFrom {
         //TODO use lock (SELECT FOR UPDATE ?)
-        Family family = familyRepository.findOneWithTasksById(familyMember.getFamily().getId());
-        UUID familyId = family.getId();
         Task task = null;
         int pickedNumber = -1;
         try {
+            Family family = familyRepository.findOneWithTasksById(familyMember.getFamily().getId());
+            UUID familyId = family.getId();
+
             pickedNumber = getRandomTaskIndex(familyMember);
             List<Task> tasks = family.getTasks();
 
@@ -166,7 +167,7 @@ public class MembersManager {
             // TODO better analyze the reason
             log.debug("Possible conflict trying to update task with index=" + pickedNumber);
         } catch (PessimisticLockingFailureException e) {
-            log.error("UPDATE failure updating task " + task.getName() + ", possibly: locking timeout");
+            log.error("UPDATE failure updating task with index " + pickedNumber + ", possibly: locking timeout");
         }
     }
 
