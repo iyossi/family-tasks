@@ -2,6 +2,7 @@ package application.bl;
 
 
 import application.Exceptions.ClosedTasksListException;
+import application.Exceptions.EmptyListUpdateException;
 import application.Exceptions.NoTasksToChooseFrom;
 import application.model.Family;
 import application.model.FamilyMember;
@@ -13,11 +14,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.PessimisticLockingFailureException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.persistence.EntityNotFoundException;
+import javax.persistence.OptimisticLockException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -25,12 +29,12 @@ import java.util.UUID;
 
 
 @Service
-@Transactional
+//@Transactional
 public class MembersManager {
     //TODO move to prepreties file
-    private static final int MAX_MEMBERS_PER_FAMILY = 20;
-    private static final int MAX_ITERATIONS = 20;// for now. it should be infinite according to the requirements ?
-    private static final long SLEEP_TIME_BETWEEN_ACTIVITIES_MS = 500;//ms
+    private static final int MAX_MEMBERS_PER_FAMILY = 13;
+    private static final int MAX_ITERATIONS = 10;// for now. it should be infinite according to the requirements ?
+    private static final long SLEEP_TIME_BETWEEN_ACTIVITIES_MS = 50;//ms
 
     private Logger log = LoggerFactory.getLogger(MembersManager.class);
 
@@ -43,10 +47,14 @@ public class MembersManager {
     @Autowired
     private FamilyManager familyManager;
 
+    @Autowired
+    private TransactionHelper helper;
+
     public void initialSetup() {
         setupFamiliesAndMembers();
     }
 
+    @Transactional
     private void setupFamiliesAndMembers() {
         List<Family> families = new ArrayList<>();
         families.add(new Family("Cohen"));
@@ -58,19 +66,23 @@ public class MembersManager {
                 FamilyMember member = new FamilyMember(family.getName() + "_member_" + index, (index + 1) * 3);
                 member.setFamily(family);
                 family.getMembers().add(member);
+//                MemberStats memberStats=new MemberStats(); //TODO should be in a separate trx since we need the memberId
             }
         });
         log.info("Families and members were added");
         familyRepository.saveAll(families);
     }
 
+    @Transactional
     public List<FamilyMember> getAllMembers() {
         return familyMemberRepository.findAll();
     }
 
     @Async
-    public void memberActivity(UUID memberId) {
+    public void memberActivity(UUID memberId, String memberName) {
+        Thread.currentThread().setName(memberName);
         log.info("Starting memberActivity for " + memberId);
+
         for (int counter = 0; counter < MAX_ITERATIONS; counter++) {
             try {
                 runOneOperation(memberId);
@@ -94,31 +106,48 @@ public class MembersManager {
 
     }
 
-    private void runOneOperation(UUID memberId) throws NoTasksToChooseFrom {
+
+    public void runOneOperation(UUID memberId) throws NoTasksToChooseFrom {
         Random rand = new Random();
         int pickedNumber = rand.nextInt(eOperation.values().length);
-        FamilyMember familyMember = familyMemberRepository.getOne(memberId);
-        Thread.currentThread().setName(familyMember.getName() + "_thread"); // for better logging
-        switch (pickedNumber) {
-            case 0:
-            case 1:
-                createTask(familyMember);
-                break;
-            case 2:
-                updateRandomTask(familyMember);
-                break;
-            case 3:
-                deleteRandomTask(familyMember);
-                break;
-            default:
-                log.error("Invalid operation=" + pickedNumber);
-                break;
+
+        try {
+            String familyMemberName = "KKKK";
+//        UUID familyId;
+            FamilyMember familyMember2 = null;
+//        familyMember2 =
+            CreateTaskInputDTO createTaskInputDTO = helper.withTransactionRO(() -> {
+                FamilyMember member = familyMemberRepository.getOne(memberId);
+                return new CreateTaskInputDTO(member.getFamily().getId(), member.getName());
+            });
+            final FamilyMember familyMember = familyMember2;
+
+//        FamilyMember familyMember = familyMemberRepository.getOne(memberId);
+//        Thread.currentThread().setName(familyMember.getName() + "_thread"); // for better logging
+//        pickedNumber=0;
+            switch (pickedNumber) {
+                case 0:
+                case 1:
+//                helper.withTransaction(() ->createTask(createTaskInputDTO));
+                    createTask(createTaskInputDTO);
+                    break;
+                case 2:
+                    updateRandomTask(createTaskInputDTO.getFamilyID());
+                    break;
+                case 3:
+                    deleteRandomTask(createTaskInputDTO.getFamilyID());
+                    break;
+                default:
+                    log.error("Invalid operation=" + pickedNumber);
+                    break;
+            }
+        } catch (EmptyListUpdateException e) {
+
         }
     }
 
 
-    private int getRandomTaskIndex(FamilyMember familyMember) throws NoTasksToChooseFrom {
-        UUID familyId = familyMember.getFamily().getId();
+    private int getRandomTaskIndex(UUID familyId) throws NoTasksToChooseFrom {
         int listSize = familyManager.getTasksCount(familyId);
         log.debug(" list size is " + listSize);
 
@@ -127,56 +156,85 @@ public class MembersManager {
         return pickedNumber;
     }
 
-    private void createTask(FamilyMember familyMember) {
-        Task task = new Task("Task " + familyMember.getName() + "_" + (System.currentTimeMillis()));
-        Family family = familyMember.getFamily();
-        UUID familyId = family.getId();
+    //    @Transactional
+    public void createTask(CreateTaskInputDTO createTaskInputDTO) {
+
+        Task task = new Task("Task " + createTaskInputDTO.getMemberName() + "_" + (System.currentTimeMillis()));
 
         try {
-            familyManager.addTask(familyId, task);
+            helper.withTransaction(() -> {
+                try {
+                    familyManager.addTask(createTaskInputDTO.getFamilyID(), task);
+                } catch (ClosedTasksListException e) {
+                    e.printStackTrace();
+                }
+            });
             log.info("ADDED " + task.getName());
         } catch (ObjectNotFoundException e) {
             e.printStackTrace();
             log.error(e.toString());
-        } catch (ClosedTasksListException e) {
-            log.info("REJECTED " + task.getName());
         }
+//        catch (ClosedTasksListException e) {
+//            log.info("REJECTED " + task.getName());
+//        }
     }
 
-
-    private void updateRandomTask(FamilyMember familyMember) throws NoTasksToChooseFrom {
+    @Retryable(value = {OptimisticLockException.class, ObjectOptimisticLockingFailureException.class},
+            maxAttempts = 3)
+    public void updateRandomTask(UUID familyId) throws NoTasksToChooseFrom, EmptyListUpdateException {
         //TODO use lock (SELECT FOR UPDATE ?)
-        Task task = null;
-        int pickedNumber = -1;
-        try {
-            Family family = familyRepository.findOneWithTasksById(familyMember.getFamily().getId());
-            UUID familyId = family.getId();
+//        Task task = null;
+        int pickedNumber2 = -2;
+        boolean retry = false;
 
-            pickedNumber = getRandomTaskIndex(familyMember);
-            List<Task> tasks = family.getTasks();
+        helper.withTransaction(() -> {
+            try {
+                helper.withTransaction(() -> {
+                    Family family = familyRepository.findOneWithTasksById(familyId);
 
-            task = tasks.get(pickedNumber);
-            task.setName(task.getName() + "_updated");
-            familyManager.updateTask(familyId, pickedNumber, task);
-            log.info("UPDATED " + task.getName());
-        } catch (IndexOutOfBoundsException e) {
-            // the list was modified in the middle
-            log.warn("CONFLICT updating task with index " + pickedNumber);
-        } catch (IllegalArgumentException e) {
-            //  the list was empty (or there are no tasks, or updated by another thread at the same time ?)
-            // TODO better analyze the reason
-            log.debug("Possible conflict trying to update task with index=" + pickedNumber);
-        } catch (PessimisticLockingFailureException e) {
-            log.error("UPDATE failure updating task with index " + pickedNumber + ", possibly: locking timeout");
-        }
+                    int pickedNumber = 0;
+                    try {
+                        pickedNumber = getRandomTaskIndex(familyId);
+                    } catch (NoTasksToChooseFrom noTasksToChooseFrom) {
+                        noTasksToChooseFrom.printStackTrace();
+                    }
+                    List<Task> tasks = family.getTasks();
+                    log.info("got tasks for " + pickedNumber + ", size=" + tasks.size());
+//                    pickedNumber2 = pickedNumber;
+                    Task task = tasks.get(pickedNumber);
+                    task.setName(task.getName() + "_updated");
+                    log.info("Going to update task " + pickedNumber);
+                    familyManager.updateTask(familyId, pickedNumber, task);
+                    log.info("UPDATED " + task.getName());
+                });
+            } catch (IndexOutOfBoundsException e) {
+                // the list was modified in the middle
+                log.warn("CONFLICT updating task with index " + pickedNumber2);
+                throw e;
+            } catch (IllegalArgumentException e) {
+                //  the list was empty
+                // TODO better analyze the reason
+                log.warn("List is empty. Try to update it later ");
+                throw new EmptyListUpdateException();
+            } catch (PessimisticLockingFailureException e) {
+                log.error("UPDATE failure updating task with index " + pickedNumber2 + ", possibly: locking timeout");
+                throw e;
+            } catch (OptimisticLockException e) {
+                log.warn("Retry due to optimistic lock in update");
+                throw e;
+            } catch (Exception e) {
+                log.error("unknown error");
+                e.printStackTrace();
+                throw e;
+            }
+        });
     }
 
-    private void deleteRandomTask(FamilyMember familyMember) throws NoTasksToChooseFrom {
+    public void deleteRandomTask(UUID familyId) throws NoTasksToChooseFrom {
         //TODO use lock (SELECT FOR UPDATE ?)
-        UUID familyId = familyMember.getFamily().getId();
         int pickedNumber = -1;
         try {
-            pickedNumber = getRandomTaskIndex(familyMember);
+            pickedNumber = getRandomTaskIndex(familyId);
             Task task = familyManager.removeTask(familyId, pickedNumber);
             log.info("DELETED " + task.getName());
         } catch (PessimisticLockingFailureException e) {

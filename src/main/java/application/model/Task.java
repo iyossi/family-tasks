@@ -16,6 +16,11 @@ public class Task {
     @GeneratedValue
     @Column(updatable = false, nullable = false)
     private UUID id;
+
+    @Version
+    private int version;
+
+
     private String name;
     public Task(String name) {
         this.name = name;

@@ -35,6 +35,7 @@ public class FamilyManager {
     }
 
 
+    @Transactional
     public void printStats() {
         //TODO implement upon requirements. currently just a simple stat
         getAllFamilies().forEach(family -> {
@@ -42,10 +43,12 @@ public class FamilyManager {
         });
     }
 
+    @Transactional
     protected void addTask(UUID familyId, Task task) throws ObjectNotFoundException, ClosedTasksListException {
         if (task == null) {
             throw new NullPointerException("Null Task");
         }
+
         Optional<Family> familyOpt = familyRepository.findById(familyId);
         familyOpt.orElseThrow(() -> new ObjectNotFoundException(familyId, "Family"));
         Family family = familyOpt.get();
@@ -76,11 +79,17 @@ public class FamilyManager {
         return task;
     }
 
+    @Transactional
     protected void updateTask(UUID familyId, int taskIndex, Task task) {
         Optional<Family> familyOpt = familyRepository.findById(familyId);
         familyOpt.orElseThrow(() -> new ObjectNotFoundException(familyId, "Family"));
         Family family = familyOpt.get();
-        family.updateTask(taskIndex, task);
-        familyRepository.save(family);
+        try {
+            family.updateTask(taskIndex, task);
+            familyRepository.save(family);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw e;
+        }
     }
 }

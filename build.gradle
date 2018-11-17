@@ -32,6 +32,7 @@ dependencies {
     implementation('org.springframework.boot:spring-boot-starter-web')
     implementation('org.springframework.boot:spring-boot-starter-data-jpa')
     implementation('org.springframework.boot:spring-boot-starter-data-mongodb')
+    compile group: 'org.springframework.retry', name: 'spring-retry', version: '1.2.2.RELEASE'
 
 //    compile group: 'org.springframework.boot', name: 'spring-boot-starter-logging', version: '2.1.0.RELEASE'
 //    compile group: 'ch.qos.logback', name: 'logback-core', version: '1.2.3'

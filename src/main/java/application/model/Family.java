@@ -22,6 +22,9 @@ public class Family {
     @Column(updatable = false, nullable = false)
     private UUID id;
 
+    @Version
+    private int version;
+
     private String name;
 
 
